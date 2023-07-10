@@ -19,5 +19,6 @@ public:
 	glm::mat4 CalculateLightTransform();
 private:
 	glm::vec3 direction;
+	glm::mat4 lightTransform;
 
 };

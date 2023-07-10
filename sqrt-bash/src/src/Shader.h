@@ -31,7 +31,7 @@ public:
 	void Clear();
 	
 
-	void SetDirectionalLights(DirectionalLight* dLight);
+	void SetDirectionalLight(DirectionalLight* dLight);
 	void SetPointLights(PointLight* pLight, unsigned int lightCount);
 	void SetSpotLights(SpotLight* sLight, unsigned int lightCount);
 	

@@ -49,6 +49,8 @@ Model xwing;
 GLfloat deltaTime = 0.f;
 GLfloat lastTime = 0.f;
 
+unsigned int pointLightCount = 0, spotLightCount = 0;
+
 static const char* vertexShader = "shaders/shader.vert";
 static const char* fragmenShader = "shaders/shader.frag";
 
@@ -139,11 +141,6 @@ void CreateShaders() {
 }
 
 void RenderScene() {
-	float FOV = 45.f;
-	float aspect_ratio = mainWindow->getBufferWidth() / mainWindow->getBufferHeight();
-	float  zNear = 0.1f, zFar = 100.f;
-	glm::mat4 projection = glm::perspective(FOV, aspect_ratio, zNear, zFar);
-
 	// it's important to initialize an indetity matrix with constructor
 	glm::mat4 model = glm::mat4(1.0f);
 	// the order is important	p v m
@@ -160,19 +157,17 @@ void RenderScene() {
 
 }
 
-void RenderScene() {
-
-}
-
 void DirectionalShadowMapPass(DirectionalLight* light) {
 	directionalShadowShader.Use();
-	glViewport(0, 0, light->GetShadowMap()->GetShadowWidth(), light->GetShadowMap()->GetShadowHeight());
+	glViewport(0, 0, light->GetShadowMap()->GetShadowWidth(), 
+		light->GetShadowMap()->GetShadowHeight());
 
 	light->GetShadowMap()->Write();
 	glClear(GL_DEPTH_BUFFER_BIT);
 
 	uniformModel = directionalShadowShader.GetModelLocation();
-	directionalShadowShader.SetDirectionalLightTransform(light->CalculateLightTransform());
+	auto lightTransform = mainLight.CalculateLightTransform();
+	directionalShadowShader.SetDirectionalLightTransform(&lightTransform);
 
 	RenderScene();
 
@@ -191,22 +186,24 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix) {
 	uniformSpecularIntensity = shaderList[0]->GetSpecularDensityLocation();
 	uniformShininess = shaderList[0]->GetShininessLocation();
 
-	shaderList[0]->SetDirectionalLights(&mainLight);
-	shaderList[0]->SetPointLights(pointLights, pointLightCount);
-	shaderList[0]->SetSpotLights(spotLights, spotLightCount);
-
 	glViewport(0, 0, WIDTH, HEIGHT);
 	glClearColor(0.f, 0.f, 0.f, 1.f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-	glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
+	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(viewMatrix));
+	glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
 	glUniform3f(uniformEyePosition, camera->getCameraPosition().x,
 		camera->getCameraPosition().y, camera->getCameraPosition().z);
 
-	glUniformMatrix4fv(uniformView, 1, GL_FALSE,
-		glm::value_ptr(camera->calculateViewMatrix()));
+	shaderList[0]->SetDirectionalLight(&mainLight);
+	auto lightTransform = mainLight.CalculateLightTransform();
+	directionalShadowShader.SetDirectionalLightTransform(&lightTransform);
 
+	shaderList[0]->SetPointLights(pointLights, pointLightCount);
+	shaderList[0]->SetSpotLights(spotLights, spotLightCount);
+
+	mainLight.GetShadowMap()->Read(GL_TEXTURE1);
+	glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(viewMatrix));
 }
 
 int main() {
@@ -233,35 +230,38 @@ int main() {
 	//xwing = Model();
 	//xwing.LoadModel("models/uh60.obj");
 
-	mainLight = DirectionalLight(1.f, 1.f, 1.f,
-									0.3f, 0.6f,
-									2.f, 0.f, -2.f);
+	mainLight = DirectionalLight(WIDTH, HEIGHT,
+								1.f, 1.f, 1.f,
+								0.3f, 0.6f,
+								2.f, 0.f, -2.f);
 	
-	unsigned int pointLightCount = 0;
-
 	pointLights[0] = PointLight(0.f, 0.f, 1.f,
-		0.1f, 0.3f,
-		-4.f, 0., 0.f,
-		0.3f, 0.2f, 0.1f);
+								0.1f, 0.3f,
+								-4.f, 0., 0.f,
+								0.3f, 0.2f, 0.1f);
 	pointLightCount++;
 
 	pointLights[1] = PointLight(0.f, 1.f, 0.f,
-		0.1f, 1.f,
-		-4.f, 2.f, 0.f,
-		0.3f, 0.1f, 0.1f);
+								0.1f, 1.f,
+								-4.f, 2.f, 0.f,
+								0.3f, 0.1f, 0.1f);
 	pointLightCount++;
 
 
-	unsigned int spotLightCount = 0;
+	
 
-	spotLights[0] = SpotLight(
-		1.f, 0.f, 0.f,
-		0.f, 1.f,
-		0.f, 1.f, 0.f,
-		0.f, -2.f, 0.f,
-		1.f, 0.f, 0.9f,
-		40.f);
+	spotLights[0] = SpotLight(1.f, 0.f, 0.f,
+								0.f, 1.f,
+								0.f, 1.f, 0.f,
+								0.f, -2.f, 0.f,
+								1.f, 0.f, 0.9f,
+								40.f);
 	spotLightCount++;
+
+	float FOV = 45.f;
+	float aspect_ratio = mainWindow->getBufferWidth() / mainWindow->getBufferHeight();
+	float  zNear = 0.1f, zFar = 100.f;
+	glm::mat4 projection = glm::perspective(FOV, aspect_ratio, zNear, zFar);
 
 	while (!mainWindow->shouldClose()) {
 		GLfloat now = glfwGetTime(); // in seconds
@@ -272,14 +272,15 @@ int main() {
 		glfwPollEvents();
 		camera->keyControl(mainWindow->getsKeys(), deltaTime);
 		camera->mouseControl(mainWindow->getXChange(), mainWindow->getYChange());
-		RenderPass();
+		
+		DirectionalShadowMapPass(&mainLight);
+		RenderPass(camera->calculateViewMatrix(), projection);
 		RenderScene();
-		glUseProgram(0);
 		mainWindow->swapBuffers();
 	}
 	
 
-	// call free, change to smart pointers
+	// change to smart pointers
 	meshList[0]->Clear();
 	return 0;
 }
