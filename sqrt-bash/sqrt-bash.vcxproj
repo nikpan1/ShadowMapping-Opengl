@@ -33,7 +33,6 @@
     <ClCompile Include="src\src\Model.cpp" />
     <ClCompile Include="src\src\PointLight.cpp" />
     <ClCompile Include="src\src\Shader.cpp" />
-    <ClCompile Include="src\src\ShadowMap.cpp" />
     <ClCompile Include="src\src\SpotLight.cpp" />
     <ClCompile Include="src\src\Texture.cpp" />
   </ItemGroup>
@@ -55,7 +54,6 @@
     <ClInclude Include="src\src\Model.h" />
     <ClInclude Include="src\src\PointLight.h" />
     <ClInclude Include="src\src\Shader.h" />
-    <ClInclude Include="src\src\ShadowMap.h" />
     <ClInclude Include="src\src\SpotLight.h" />
     <ClInclude Include="src\src\Texture.h" />
     <ClInclude Include="src\src\stb_image.h" />
@@ -65,8 +63,6 @@
     <Image Include="textures\sky.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\directional_shadow_map.frag" />
-    <None Include="shaders\directional_shadow_map.vert" />
     <None Include="shaders\shader.frag" />
     <None Include="shaders\shader.vert" />
   </ItemGroup>
