@@ -48,7 +48,7 @@ public:
 	GLuint GetDiffusionIntensityLocation();
 	GLuint GetDirectionLocation();
 
-	GLuint GetSpecularDensityLocation();
+	GLuint GetSpecularIntensityLocation();
 	GLuint GetShininessLocation();
 	
 	GLuint GetEyePosition();
@@ -82,7 +82,7 @@ private:
 		GLuint uniformConstant;
 		GLuint uniformLinear;
 		GLuint uniformExponent;
-	} uniformPointLight[MAX_POINTS_LIGHTS];
+	} uniformPointLight[MAX_POINT_LIGHTS];
 
 
 	struct {

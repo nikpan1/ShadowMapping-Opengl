@@ -28,8 +28,7 @@ void DirectionalLight::Use(GLuint ambientIntensityLoc, GLfloat ambientColorLoc,
 
 glm::mat4 DirectionalLight::CalculateLightTransform()
 {
-	lightTransform = lightProj * glm::lookAt(-direction, glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
-	return lightTransform;
+	return lightProj * glm::lookAt(-direction, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
 DirectionalLight::~DirectionalLight()
