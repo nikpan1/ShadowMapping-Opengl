@@ -7,6 +7,9 @@
 
 #include <GL\glew.h>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include "directionalLight.h"
 #include "PointLight.h"
 #include "SpotLight.h"
@@ -18,17 +21,23 @@ class Shader
 public:
 	Shader();
 	~Shader();
+
 	void CreateFromString(const char* vertexCode, const char* fragmentCode);
 	void CreateFromFile(const char* vertexLocation, const char* fragmentLocation);
-	
 	std::string ReadFile(const char* FileLocation);
+
 
 	void Use();
 	void Clear();
 	
+
 	void SetDirectionalLights(DirectionalLight* dLight);
 	void SetPointLights(PointLight* pLight, unsigned int lightCount);
 	void SetSpotLights(SpotLight* sLight, unsigned int lightCount);
+	
+	void SetTexture(GLuint textureUnit);
+	void SetDirectionalShadowMap(GLuint textureUnit);
+	void SetDirectionalLightTransform(glm::mat4* ltransform);
 
 	GLuint GetProjectionLocation();
 	GLuint GetModelLocation();
@@ -53,6 +62,7 @@ private:
 	GLuint shaderID, uniformProjection, uniformModel, uniformView,
 		uniformEyePosition, uniformSpecularIntensity, uniformShininess;
 
+	GLuint uniformTexture, uniformDirectionalLightTransform, uniformDirectionalShadowMap;
 
 	struct {
 		GLuint uniformColor;

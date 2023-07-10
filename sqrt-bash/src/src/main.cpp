@@ -33,6 +33,8 @@ const float toRadians = 3.14159265f / 180.f;
 Window* mainWindow;
 std::vector<Mesh*> meshList;
 std::vector<Shader*> shaderList;
+Shader directionalShadowShader;
+
 Camera* camera;
 
 Texture* brickTexture;
@@ -50,6 +52,8 @@ GLfloat lastTime = 0.f;
 static const char* vertexShader = "shaders/shader.vert";
 static const char* fragmenShader = "shaders/shader.frag";
 
+GLuint uniformProjection{ 0 }, uniformModel{ 0 }, uniformView{ 0 },
+uniformEyePosition{ 0 }, uniformSpecularIntensity{ 0 }, uniformShininess{ 0 };
 
 // temporary here
 void calcAvgNormals(unsigned int * indices, unsigned int indiceCount, GLfloat * vertices, unsigned int verticeCount, 
@@ -129,8 +133,81 @@ void CreateShaders() {
 	Shader* shader1 = new Shader();
 	shader1->CreateFromFile(vertexShader, fragmenShader);
 	shaderList.push_back(shader1);
+
+	directionalShadowShader = Shader();
+	directionalShadowShader.CreateFromFile("shaders/directional_shadow_map.vert", "shaders/directional_shadow_map.frag");
 }
 
+void RenderScene() {
+	float FOV = 45.f;
+	float aspect_ratio = mainWindow->getBufferWidth() / mainWindow->getBufferHeight();
+	float  zNear = 0.1f, zFar = 100.f;
+	glm::mat4 projection = glm::perspective(FOV, aspect_ratio, zNear, zFar);
+
+	// it's important to initialize an indetity matrix with constructor
+	glm::mat4 model = glm::mat4(1.0f);
+	// the order is important	p v m
+	model = glm::translate(model, glm::vec3(0.f, -2.f, -2.f));
+	model = glm::rotate(model, 100.f * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
+	model = glm::scale(model, glm::vec3(1.f, 1.f, 1.f));
+
+
+	brickTexture->Use();
+	shinyMaterial.Use(uniformSpecularIntensity, uniformShininess);
+
+	meshList[0]->Render();
+	meshList[1]->Render();
+
+}
+
+void RenderScene() {
+
+}
+
+void DirectionalShadowMapPass(DirectionalLight* light) {
+	directionalShadowShader.Use();
+	glViewport(0, 0, light->GetShadowMap()->GetShadowWidth(), light->GetShadowMap()->GetShadowHeight());
+
+	light->GetShadowMap()->Write();
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+	uniformModel = directionalShadowShader.GetModelLocation();
+	directionalShadowShader.SetDirectionalLightTransform(light->CalculateLightTransform());
+
+	RenderScene();
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+}
+
+void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix) {
+	shaderList[0]->Use();
+
+	uniformProjection = shaderList[0]->GetProjectionLocation();
+	uniformModel = shaderList[0]->GetModelLocation();
+	uniformView = shaderList[0]->GetViewLocation();
+
+	uniformEyePosition = shaderList[0]->GetEyePosition();
+	uniformSpecularIntensity = shaderList[0]->GetSpecularDensityLocation();
+	uniformShininess = shaderList[0]->GetShininessLocation();
+
+	shaderList[0]->SetDirectionalLights(&mainLight);
+	shaderList[0]->SetPointLights(pointLights, pointLightCount);
+	shaderList[0]->SetSpotLights(spotLights, spotLightCount);
+
+	glViewport(0, 0, WIDTH, HEIGHT);
+	glClearColor(0.f, 0.f, 0.f, 1.f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+	glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
+	glUniform3f(uniformEyePosition, camera->getCameraPosition().x,
+		camera->getCameraPosition().y, camera->getCameraPosition().z);
+
+	glUniformMatrix4fv(uniformView, 1, GL_FALSE,
+		glm::value_ptr(camera->calculateViewMatrix()));
+
+}
 
 int main() {
 	mainWindow = new Window(WIDTH, HEIGHT);
@@ -186,18 +263,6 @@ int main() {
 		40.f);
 	spotLightCount++;
 
-
-
-	float FOV = 45.f;
-	float aspect_ratio = mainWindow->getBufferWidth() / mainWindow->getBufferHeight();
-	float  zNear = 0.1f, zFar = 100.f;
-	glm::mat4 projection = glm::perspective(FOV, aspect_ratio, zNear, zFar);
-
-	GLuint uniformProjection{ 0 }, uniformModel{ 0 }, uniformView { 0 },
-		uniformEyePosition{ 0 }, uniformSpecularIntensity{ 0 }, uniformShininess{ 0 };
-
-	glm::mat4 model = glm::mat4(1.0f);
-
 	while (!mainWindow->shouldClose()) {
 		GLfloat now = glfwGetTime(); // in seconds
 		deltaTime = now - lastTime;
@@ -207,49 +272,9 @@ int main() {
 		glfwPollEvents();
 		camera->keyControl(mainWindow->getsKeys(), deltaTime);
 		camera->mouseControl(mainWindow->getXChange(), mainWindow->getYChange());
-
-		glClearColor(0.f, 0.f, 0.f, 1.f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-
-		shaderList[0]->Use();
-		
-		uniformProjection = shaderList[0]->GetProjectionLocation();
-		uniformModel = shaderList[0]->GetModelLocation();
-		uniformView = shaderList[0]->GetViewLocation();
-		
-		uniformEyePosition = shaderList[0]->GetEyePosition();
-		uniformSpecularIntensity = shaderList[0]->GetSpecularDensityLocation();
-		uniformShininess = shaderList[0]->GetShininessLocation();
-
-		shaderList[0]->SetDirectionalLights(&mainLight);
-		shaderList[0]->SetPointLights(pointLights, pointLightCount);
-		shaderList[0]->SetSpotLights(spotLights, spotLightCount);
-
-		// it's important to initialize an indetity matrix with constructor
-		model = glm::mat4(1.0f);
-		// the order is important	p v m
-		model = glm::translate(model, glm::vec3(0.f, -2.f, -2.f));
-		model = glm::rotate(model, 100.f * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
-		model = glm::scale(model, glm::vec3(1.f, 1.f, 1.f));
-
-		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-		glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
-		glUniform3f(uniformEyePosition, camera->getCameraPosition().x, 
-			camera->getCameraPosition().y, camera->getCameraPosition().z);
-
-		glUniformMatrix4fv(uniformView, 1, GL_FALSE, 
-							glm::value_ptr(camera->calculateViewMatrix()));
-		
-		brickTexture->Use();
-		shinyMaterial.Use(uniformSpecularIntensity, uniformShininess);
-		
-		meshList[0]->Render();
-		meshList[1]->Render();
-		
-		
+		RenderPass();
+		RenderScene();
 		glUseProgram(0);
-	
 		mainWindow->swapBuffers();
 	}
 	
