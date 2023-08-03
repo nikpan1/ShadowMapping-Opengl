@@ -219,7 +219,7 @@ int main() {
 		shaderList[0]->SetPointLights(pointLights, pointLightCount);
 		shaderList[0]->SetSpotLights(spotLights, spotLightCount);
 
-		if (rotation > 360.f) rotation;
+		if (rotation > 360.f) rotation = 0;
 		else rotation += 0.07f;
 
 		glUniform3f(uniformEyePosition, camera->getCameraPosition().x, 
